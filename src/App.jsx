@@ -614,7 +614,7 @@ function SankeyChart({ accom, food, other, tax, ra, ya, wages, loan, savings, ho
 
 /* ═══ MAIN APPLICATION ═══ */
 export default function App() {
-  const [tab, setTab] = useState("budget");
+  const [tab, setTab] = useState("howto");
   const [loaded, setLoaded] = useState(false);
 
   const [livingCosts, setLivingCosts] = useState(DEFAULTS().livingCosts);
@@ -816,19 +816,6 @@ export default function App() {
     push("", "Net Weekly Amount", Math.round(budget.net));
     blank();
 
-    /* Funding Summary */
-    push("FUNDING SUMMARY");
-    blank();
-    push("", "Upfront Costs", "");
-    push("", "  Rental bond (4 weeks rent)", rentalBond);
-    push("", "  Rent in advance (2 weeks)", rentInAdvance);
-    push("", "  Furniture & household items", furnitureCost);
-    push("", "Total Upfront Costs", totalUpfrontCosts);
-    blank();
-    push("", "Less: Estimated savings at move-out", estimatedSavingsInput > 0 ? -estimatedSavingsInput : 0);
-    blank();
-    push("", fundingGap > 0 ? "Estimated Funding Gap" : "Estimated Surplus After Upfront Costs", Math.round(fundingGap));
-
     /* ── Create workbook ── */
     const ws = XLSX.utils.aoa_to_sheet(data);
 
@@ -911,10 +898,12 @@ export default function App() {
   const totalUpfrontCosts = rentalBond + rentInAdvance + furnitureCost;
   const fundingGap = totalUpfrontCosts - estimatedSavingsInput;
   const TAB_GROUPS = [
+    { group: "Guide", tabs: [["howto", "How to Use"]] },
     { group: "Budgeting", tabs: [["budget", "Weekly Budget"], ["sankey", "Annual Summary"]] },
     { group: "Funding", tabs: [["funding", "Loan Options"], ["loan", "Loan Summary"]] },
     { group: "Other", tabs: [["cashflow", "Forecast Model"], ["tax", "Tax"], ["utilities", "Utilities Guide"]] },
   ];
+  const TAB_NUMBERS = { budget: 1, sankey: 2, funding: 3, loan: 4, cashflow: 5, tax: 6, utilities: 7 };
   const TABS = TAB_GROUPS.flatMap(g => g.tabs);
 
   /* ── Sankey derived values (annualised; reuses `budget` outputs only) ── */
@@ -1119,20 +1108,39 @@ export default function App() {
           <img src={LOGO} alt="Skill Path" style={{ height: 48, objectFit: "contain" }} />
         </div>
 
-        {/* Tab bar */}
-        <div className="mb-2 border-b" style={{ borderColor: "#e5e7eb" }}>
-          <div className="flex flex-nowrap gap-2">
-            {TAB_GROUPS.map((g) => {
+        {/* Top line: Guide tab (left) + action buttons (right) */}
+        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+          <button onClick={() => setTab("howto")}
+            className="px-3 py-1.5 text-xs rounded transition whitespace-nowrap"
+            style={{ backgroundColor: tab === "howto" ? C.grey : "transparent", color: tab === "howto" ? "white" : C.grey, fontWeight: tab === "howto" ? 700 : 600, border: `1px solid ${C.grey}50` }}>
+            How to Use
+          </button>
+          <div className="flex gap-2">
+            <button onClick={downloadXLSX} className="px-3 py-1.5 text-xs rounded transition"
+              style={{ backgroundColor: "#f3f4f6", color: C.navy, border: "1px solid #e5e7eb" }}>
+              Download to Spreadsheet
+            </button>
+            <button onClick={resetAll} className="px-3 py-1.5 text-xs rounded transition"
+              style={{ backgroundColor: "#f3f4f6", color: C.navy, border: "1px solid #e5e7eb" }}>
+              Reset to Base-Case Assumptions
+            </button>
+          </div>
+        </div>
+
+        {/* Tab bar: the 3 model-tab groups */}
+        <div className="mb-4 border-b overflow-x-auto" style={{ borderColor: "#e5e7eb" }}>
+          <div className="flex flex-nowrap items-end gap-2">
+            {TAB_GROUPS.filter((g) => g.group !== "Guide").map((g) => {
               const gc = { Budgeting: C.navy, Funding: C.teal, Other: C.coral }[g.group];
               return (
-                <div key={g.group} className="flex-1 flex flex-col items-center gap-1 rounded-t-lg px-2 pt-1.5 pb-1" style={{ backgroundColor: `${gc}12`, border: `1px solid ${gc}35`, borderBottom: "none" }}>
+                <div key={g.group} className="flex-1 flex flex-col items-center gap-1 rounded-t-lg px-2 pt-1.5 pb-1" style={{ minWidth: 0, backgroundColor: `${gc}12`, border: `1px solid ${gc}35`, borderBottom: "none" }}>
                   <span className="text-[9px] font-bold uppercase tracking-wider text-center whitespace-nowrap" style={{ color: gc }}>{g.group}</span>
-                  <div className="flex gap-0.5 justify-center flex-wrap">
+                  <div className="flex gap-0 justify-center flex-nowrap">
                     {g.tabs.map(([k, l]) => (
                       <button key={k} onClick={() => setTab(k)}
-                        className="px-2.5 py-1.5 text-xs rounded transition whitespace-nowrap flex-shrink-0"
+                        className="px-1.5 py-1.5 text-xs rounded transition whitespace-nowrap flex-shrink-0"
                         style={{ backgroundColor: tab === k ? gc : "transparent", color: tab === k ? "white" : gc, fontWeight: tab === k ? 700 : 600 }}>
-                        {l}
+                        {TAB_NUMBERS[k]}. {l}
                       </button>
                     ))}
                   </div>
@@ -1142,17 +1150,109 @@ export default function App() {
           </div>
         </div>
 
-        {/* Action buttons */}
-        <div className="flex justify-end gap-2 mb-4">
-          <button onClick={downloadXLSX} className="px-3 py-1.5 text-xs rounded transition"
-            style={{ backgroundColor: "#f3f4f6", color: C.navy, border: "1px solid #e5e7eb" }}>
-            Download to Spreadsheet
-          </button>
-          <button onClick={resetAll} className="px-3 py-1.5 text-xs rounded transition"
-            style={{ backgroundColor: "#f3f4f6", color: C.navy, border: "1px solid #e5e7eb" }}>
-            Reset to Base-Case Assumptions
-          </button>
-        </div>
+
+        {/* ═══ TAB: HOW TO USE ═══ */}
+        {tab === "howto" && (
+          <div className="bg-white rounded-lg border p-5" style={{ borderColor: "#e5e7eb" }}>
+            <SectionDivider title="How to Use This Tool" />
+            <GreyNote>
+              This tool has been developed for participants in the Refugee Student Settlement Pathway (RSSP). It helps students understand and plan for the financial aspects of their study in Australia. Students can work through the tabs below in order as each one builds on the last. Inputs are saved automatically in your browser, so you can come back and adjust them at any time.
+              <br /><br />
+              Please note the disclaimer at the bottom of this page.
+            </GreyNote>
+
+            <Section title="1. Weekly Budget">
+              <p className="text-xs mb-2" style={{ color: C.navy }}>
+                <strong>What it does:</strong> A simple weekly budget comparing your income against your weekly living expenses.
+              </p>
+              <p className="text-xs mb-2" style={{ color: C.navy }}>
+                <strong>Inputs:</strong> Weekly living expenses and income from part-time work. Government payments are pre-populated based on current rates assuming all students receive Youth Allowance.
+              </p>
+              <p className="text-xs mb-3" style={{ color: C.navy }}>
+                <strong>Outputs:</strong> Weekly income and expense breakdown and a net weekly surplus or deficit.
+              </p>
+              <p className="text-xs italic" style={{ color: "#6b7280" }}>
+                Note that this page provides a simple weekly budget model. It doesn't include any pre-arrival (eg. flights) or one-off settlement costs, or any tax obligations. Other pages in the model provide this additional detail. The page is pre-populated with base-case assumptions which need to be modified by the user.
+              </p>
+            </Section>
+
+            <Section title="2. Annual Summary">
+              <p className="text-xs mb-2" style={{ color: C.navy }}>
+                <strong>What it does:</strong> Converts your Weekly Budget assumptions into an annual view, including income tax.
+              </p>
+              <p className="text-xs mb-2" style={{ color: C.navy }}>
+                <strong>Inputs:</strong> No direct inputs. It uses the assumptions already entered on the Weekly Budget tab. You can however adjust your accommodation and part-time work assumptions on this page using the "sliders" on those bars to see how this changes your government payments, tax, and surplus/deficit.
+              </p>
+              <p className="text-xs mb-3" style={{ color: C.navy }}>
+                <strong>Outputs:</strong> An annual income vs. expense summary that includes income tax obligations. A "deficit" is presented as a loan requirement; a "surplus" is presented as savings.
+              </p>
+              <p className="text-xs italic" style={{ color: "#6b7280" }}>
+                Note that this page does not include any pre-arrival costs (e.g. flights) or other one-off costs. These one-off costs may in future periods include costs associated with moving into a rental property once you leave university accommodation. For example, you may be required to pay a refundable rental bond (typically 4 weeks of rent) and 2 weeks of rent in advance.
+              </p>
+            </Section>
+
+            <Section title="3. Loan Options">
+              <p className="text-xs mb-2" style={{ color: C.navy }}>
+                <strong>What it does:</strong> Provides information about two loan options that you may want to consider to help cover any funding gap, including upfront settlement costs.
+              </p>
+              <p className="text-xs" style={{ color: C.navy }}>
+                <strong>Inputs / Outputs:</strong> No student-specific inputs or outputs are on this page.
+              </p>
+            </Section>
+
+            <Section title="4. Loan Summary">
+              <p className="text-xs mb-2" style={{ color: C.navy }}>
+                <strong>What it does:</strong> Shows the detailed repayment profile of the Refugee Student Loan for various drawdown assumptions. This tab is standalone and does not affect the Weekly Budget or Forecast Model tabs.
+              </p>
+              <p className="text-xs mb-2" style={{ color: C.navy }}>
+                <strong>Inputs:</strong> Which years you draw down the loan, and the amount drawn in each year (up to $5,000/year).
+              </p>
+              <p className="text-xs mb-3" style={{ color: C.navy }}>
+                <strong>Outputs:</strong> Year-by-year balance, interest, and repayment schedule for the loan.
+              </p>
+            </Section>
+
+            <Section title="5. Forecast Model">
+              <p className="text-xs mb-2" style={{ color: C.navy }}>
+                <strong>What it does:</strong> Presents a multi-year financial summary based on your long term assumptions.
+              </p>
+              <p className="text-xs mb-2" style={{ color: C.navy }}>
+                <strong>Inputs:</strong> Automatically takes your weekly budget inputs and allows you to add one-off pre-arrival and settlement expenses (included in Year 1), any university payments you may receive, your tuition fees (deferred via the HECS-HELP loan scheme), drawdowns from the Refugee Student Loan Program, and assumptions about your post-graduation salary.
+              </p>
+              <p className="text-xs" style={{ color: C.navy }}>
+                <strong>Outputs:</strong> A 10 year cash flow model summarising all aspects covered by this budget and finance tool.
+              </p>
+            </Section>
+
+            <Section title="6. Tax">
+              <p className="text-xs mb-2" style={{ color: C.navy }}>
+                <strong>What it does:</strong> Explains the Australian income tax system as it applies to students, and how the tax figures elsewhere in the tool are calculated.
+              </p>
+              <p className="text-xs mb-3" style={{ color: C.navy }}>
+                <strong>Inputs / Outputs:</strong> No separate inputs — shows the tax calculated from your Weekly Budget assumptions (wages and Youth Allowance).
+              </p>
+            </Section>
+
+            <Section title="7. Utilities Guide">
+              <p className="text-xs mb-2" style={{ color: C.navy }}>
+                <strong>What it does:</strong> Provides reference information to help you estimate electricity, gas, and water costs when completing the Weekly Budget tab. These costs will not be incurred when living in on-campus university-provided accommodation only, and are therefore provided as a guide for when you move into your own rental accommodation.
+              </p>
+              <p className="text-xs" style={{ color: C.navy }}>
+                <strong>Inputs / Outputs:</strong> No inputs or outputs of its own.
+              </p>
+            </Section>
+
+            <Section title="Download to Spreadsheet">
+              <p className="text-xs" style={{ color: C.navy }}>
+                The <strong>Download to Spreadsheet</strong> button (top right of the page) exports your Weekly Budget and Forecast Model data into an Excel file, so you can review, share, or work with your figures outside the tool.
+              </p>
+            </Section>
+
+            <div className="mt-2 p-4 rounded text-xs" style={{ backgroundColor: "#fef3c7", color: "#92400e", border: "1px solid #fcd34d" }}>
+              <strong>Disclaimer:</strong> This budget and finance tool is provided to students in the RSSP as a guide to assist them in understanding the potential costs associated with studying in Australia. The model is indicative only, is not comprehensive and has not taken into account the student's personal situation. Students should seek professional advice based on their individual circumstances.
+            </div>
+          </div>
+        )}
 
         {/* ═══ TAB: BUDGET ═══ */}
         {tab === "budget" && (
@@ -1338,9 +1438,6 @@ export default function App() {
               <p className="text-sm font-bold" style={{ color: isDeficit ? C.coral : "#065f46" }}>
                 Based on your assumptions you are spending {isDeficit ? "more" : "less"} than you earn by ${Math.abs(Math.round(budget.net)).toLocaleString("en-AU")} per week.
               </p>
-            </div>
-            <div className="mt-6 p-4 rounded text-xs" style={{ backgroundColor: "#fef3c7", color: "#92400e", border: "1px solid #fcd34d" }}>
-              <strong>Disclaimer:</strong> This budgeting tool is provided to students in the RSSP as a guide to assist them in understanding the potential costs associated with studying in Australia. The model is indicative only and has not taken into account the student's personal situation.
             </div>
           </div>
         )}
@@ -1565,7 +1662,7 @@ export default function App() {
           <div className="bg-white rounded-lg border p-5" style={{ borderColor: "#e5e7eb" }}>
             <SectionDivider title="Utilities Guide" />
             <GreyNote>
-              This guide helps you estimate your weekly utility costs based on your accommodation type and where in Australia you are living. Utility expenses can vary significantly and will depend heavily on climate and whether the accommodation uses gas and electricity. You can use this tool to generate an estimate, then apply it to your budget.
+              This guide helps you estimate your weekly utility costs based on your accommodation type and where in Australia you are living. Utility expenses can vary significantly and will depend heavily on climate and whether the accommodation uses gas and electricity. You can use this tool to generate an estimate, then apply it to your budget. These costs will likely not be incurred when living in on-campus accommodation. They are provided as a guide for when you move into your own rental accommodation, which may occur after six months or in your second year.
             </GreyNote>
 
             <Section title="Your Situation">
